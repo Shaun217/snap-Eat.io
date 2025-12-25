@@ -1,0 +1,7 @@
+{
+  "name": "Copy of Snap & Eat",
+  "description": "AI-powered menu translator and food analyzer.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
