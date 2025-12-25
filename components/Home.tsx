@@ -97,7 +97,6 @@ export const Home: React.FC<HomeProps> = ({
             ref={fileInputRef} 
             className="hidden" 
             accept="image/*" 
-            capture="environment" // Favors rear camera on mobile
             onChange={handleFileChange}
           />
         </div>
