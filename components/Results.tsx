@@ -83,16 +83,7 @@ export const Results: React.FC<ResultsProps> = ({ uploadedImage, results, savedI
             const isMenu = dish.isMenu;
             
             // Determine which image to show
-            // Default for Menu: 'food' (Generated). Default for Photo: 'food' (which is Uploaded).
-            // Toggle state overrides.
             const currentMode = viewModeState[dish.id] || 'food';
-            
-            // If mode is 'menu', show uploaded image (to see bbox). 
-            // If mode is 'food', show dish.image (which is generated for menus, or uploaded for photos).
-            // Note: For non-menu photos, dish.image IS uploadedImage, so flipping modes doesn't change image source, only the bbox visibility ideally.
-            // But we simplify: 
-            //  - Menu Item: 'food' = Generated Image (No BBox). 'menu' = Uploaded Image (With BBox).
-            //  - Photo Item: 'food' = Uploaded Image (With BBox). 
             
             let displayImage = dish.image;
             let showBBox = false;
@@ -112,14 +103,15 @@ export const Results: React.FC<ResultsProps> = ({ uploadedImage, results, savedI
             }
             
             return (
-            <article key={dish.id} className="group relative flex flex-col overflow-hidden rounded-xl bg-white dark:bg-[#1a1a1a] shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-none transition-all ring-1 ring-gray-900/5 dark:ring-white/10">
+            <article key={dish.id} className="group relative flex flex-col overflow-hidden rounded-xl bg-white dark:bg-[#1a1a1a] shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-none transition-all ring-1 ring-gray-900/5 dark:ring-white/10 shrink-0">
             
             {/* Image Section */}
-            <div className="relative w-full bg-black/5 dark:bg-black/50 overflow-hidden">
+            <div className="relative w-full bg-black/5 dark:bg-black/50 overflow-hidden min-h-[200px]">
                 <img 
                     src={displayImage} 
                     alt={dish.name}
                     className="w-full h-auto object-contain max-h-[500px] block mx-auto transition-opacity duration-300"
+                    loading="lazy"
                 />
                 
                 {/* Bounding Box Overlay */}
