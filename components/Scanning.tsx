@@ -132,14 +132,18 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
             // 7. Process dishes & Preload Images
             if (isMounted) {
                 setProgress(85);
-                setStatusText(isMenu ? "Visualizing dishes..." : "Finalizing details...");
+                setStatusText(isMenu ? "Finding food photos..." : "Finalizing details...");
             }
 
             const processedDishes: Dish[] = dishesList.map((d: any, index: number) => {
-                const prompt = `${d.englishName || d.name} ${d.category || 'dish'} simple realistic food photo`;
-                // Add a random seed per dish to ensure variety, but stable per session
+                // SWITCH TO SEARCH: Use Bing Thumbnail API (Hotlinking)
+                // This searches the internet for real photos which is faster (instant) and more realistic than AI generation.
+                // We combine Original Name + English Name + "Food" for best accuracy.
+                const searchQuery = `${d.originalName || ''} ${d.englishName || d.name} food dish`.trim();
+                
+                // c=7 is smart crop, w/h sets dimensions, rs=1 resizes
                 const imageUrl = isMenu 
-                    ? `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=400&height=400&nologo=true&seed=${index}`
+                    ? `https://tse2.mm.bing.net/th?q=${encodeURIComponent(searchQuery)}&w=400&h=400&c=7&rs=1&p=0`
                     : uploadedImage;
 
                 return {
@@ -166,9 +170,8 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
                     });
                 });
 
-                // Wait for all images to load OR a max timeout of 6 seconds
-                // This ensures the generator API has time to create and cache the image
-                const timeoutPromise = new Promise<void>(resolve => setTimeout(resolve, 6000));
+                // Wait for all images to load OR a max timeout of 3 seconds (Search is faster than AI, so we lower timeout)
+                const timeoutPromise = new Promise<void>(resolve => setTimeout(resolve, 3000));
                 await Promise.race([Promise.all(imagePromises), timeoutPromise]);
             }
 
