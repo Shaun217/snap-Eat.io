@@ -44,9 +44,10 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
 
         try {
             // Start visual progress
+            // We'll cap it at 80% during analysis, then jump to 90% for image loading, then 100%
             progressInterval = setInterval(() => {
                 setProgress(prev => {
-                    if (prev >= 95) return prev; 
+                    if (prev >= 80) return prev; 
                     if (prev < 30) return prev + 3; 
                     if (prev < 70) return prev + 1; 
                     return prev + 0.3; 
@@ -118,9 +119,6 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
                 }
             });
 
-            clearInterval(progressInterval);
-            if (isMounted) setProgress(100);
-
             // 6. Parse Result
             let jsonText = response.text || "{}";
             if (jsonText.startsWith('```')) {
@@ -128,19 +126,18 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
             }
             
             const parsedData = JSON.parse(jsonText);
-            // Default to detection, but fallback to scanType hint if close
             const isMenu = parsedData.isMenu || false;
             const dishesList = parsedData.dishes || [];
 
-            // Process dishes: Add ID and determine Image URL
+            // 7. Process dishes & Preload Images
+            if (isMounted) {
+                setProgress(85);
+                setStatusText(isMenu ? "Visualizing dishes..." : "Finalizing details...");
+            }
+
             const processedDishes: Dish[] = dishesList.map((d: any, index: number) => {
-                // If it's a menu, we use a generated image. If it's food, we use the upload.
-                // We keep uploadedImage as a reference for the 'Locate' feature in Results.
-                
-                // Construct a prompt-based image URL for menus
-                // Use English name for better results with the generator.
-                // Request medium quality (smaller size, simpler prompt) to speed up loading.
                 const prompt = `${d.englishName || d.name} ${d.category || 'dish'} simple realistic food photo`;
+                // Add a random seed per dish to ensure variety, but stable per session
                 const imageUrl = isMenu 
                     ? `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=400&height=400&nologo=true&seed=${index}`
                     : uploadedImage;
@@ -153,10 +150,35 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
                 };
             });
 
-            // 7. Complete
+            // IMPORTANT: Preload images before completing to avoid "pop-in" on results page
+            // Only necessary if we generated new URLs (Menu mode)
+            if (isMenu && processedDishes.length > 0) {
+                const imagePromises = processedDishes.map(dish => {
+                    return new Promise<void>((resolve) => {
+                        if (!dish.image) {
+                            resolve(); 
+                            return;
+                        }
+                        const img = new Image();
+                        img.onload = () => resolve();
+                        img.onerror = () => resolve(); // Resolve anyway so we don't block
+                        img.src = dish.image;
+                    });
+                });
+
+                // Wait for all images to load OR a max timeout of 6 seconds
+                // This ensures the generator API has time to create and cache the image
+                const timeoutPromise = new Promise<void>(resolve => setTimeout(resolve, 6000));
+                await Promise.race([Promise.all(imagePromises), timeoutPromise]);
+            }
+
+            clearInterval(progressInterval);
+            if (isMounted) setProgress(100);
+
+            // 8. Complete
             setTimeout(() => {
                 if (isMounted) onComplete(processedDishes);
-            }, 500);
+            }, 300);
 
         } catch (error) {
             console.error("AI Error:", error);
