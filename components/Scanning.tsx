@@ -96,7 +96,12 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
                 );
             }
 
-            // 5. Call API
+            // 5. Construct Prompt with Accuracy Optimization
+            // Critical optimization: Tell AI to use Knowledge Base for menus, and Visuals for dishes.
+            const accuracyPrompt = scanType === 'menu'
+                ? "ACCURACY RULE: Since this is a menu (text), you CANNOT see the food. You MUST infer 'spiceLevel', 'allergens', and 'tags' solely based on your CULINARY KNOWLEDGE of the dish name and traditional preparation methods. Do not guess based on visual text features."
+                : "ACCURACY RULE: Infer 'spiceLevel' and 'allergens' based on VISUAL INSPECTION of the food (e.g., redness, visible chilies, ingredients) combined with dish identification.";
+
             const response = await ai.models.generateContent({
                 model: 'gemini-3-flash-preview', 
                 contents: {
@@ -108,6 +113,8 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
                                  Translate details to ${targetLanguage}.
                                  Return accurate bounding boxes (0-1000 scale) for where each dish is located in the image.
                                  If it is a menu, identify the text location of the dish name.
+
+                                 ${accuracyPrompt}
                                  
                                  IMPORTANT: Return PURE JSON adhering to the schema.` }
                     ]
@@ -115,7 +122,7 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
                 config: {
                     responseMimeType: "application/json",
                     responseSchema: responseSchema,
-                    systemInstruction: "You are an expert food critic."
+                    systemInstruction: "You are an expert food critic and nutritionist."
                 }
             });
 
