@@ -33,16 +33,19 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
 
   useEffect(() => {
     let isMounted = true;
+    let progressInterval: ReturnType<typeof setInterval>;
 
     const analyzeImage = async () => {
         if (!uploadedImage) return;
 
         try {
             // Start visual progress
-            const progressInterval = setInterval(() => {
+            progressInterval = setInterval(() => {
                 setProgress(prev => {
-                    if (prev > 85) return prev; // Hold at 85 until done
-                    return prev + 2;
+                    if (prev >= 95) return prev; 
+                    if (prev < 30) return prev + 3; 
+                    if (prev < 70) return prev + 1; 
+                    return prev + 0.3; 
                 });
             }, 100);
 
@@ -52,26 +55,35 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
             // 2. Initialize Gemini
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-            // 3. Define Schema for Dish Array
-            const dishSchema = {
-                type: Type.ARRAY,
-                items: {
-                    type: Type.OBJECT,
-                    properties: {
-                        name: { type: Type.STRING, description: `Name of the dish translated to ${targetLanguage}` },
-                        originalName: { type: Type.STRING, description: "Original name of the dish in its native language" },
-                        description: { type: Type.STRING, description: `Description of ingredients and taste profile in ${targetLanguage}` },
-                        tags: { type: Type.ARRAY, items: { type: Type.STRING }, description: `Top 3 dominant flavor profile words (e.g. Sweet, Salty, Umami) in ${targetLanguage}` },
-                        allergens: { type: Type.ARRAY, items: { type: Type.STRING }, description: `List 1 to 5 potential allergens (e.g. Peanuts, Gluten, Dairy, Shellfish) in ${targetLanguage}` },
-                        spiceLevel: { type: Type.STRING, enum: ["None", "Mild", "Medium", "Hot"], description: "None=Not Spicy, Mild=1 chili, Medium=2 chilies, Hot=3 chilies" },
-                        category: { type: Type.STRING, description: "Broad category like Soup, Main, Dessert" }
-                    },
-                    required: ["name", "originalName", "description", "tags", "allergens", "spiceLevel", "category"]
-                }
+            // 3. Define Schema (Updated for Root Object with isMenu)
+            const responseSchema = {
+                type: Type.OBJECT,
+                properties: {
+                    isMenu: { type: Type.BOOLEAN, description: "True if the image is a menu (text list), False if it is a photo of real food." },
+                    dishes: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                name: { type: Type.STRING, description: `Name of the dish translated to ${targetLanguage}` },
+                                originalName: { type: Type.STRING, description: "Original name of the dish in its native language" },
+                                englishName: { type: Type.STRING, description: "Name of the dish in English (for image search purposes)" },
+                                description: { type: Type.STRING, description: `Description of ingredients and taste profile in ${targetLanguage}` },
+                                tags: { type: Type.ARRAY, items: { type: Type.STRING }, description: `Top 3 dominant flavor profile words (e.g. Sweet, Salty, Umami) in ${targetLanguage}` },
+                                allergens: { type: Type.ARRAY, items: { type: Type.STRING }, description: `List 1 to 5 potential allergens (e.g. Peanuts, Gluten, Dairy, Shellfish) in ${targetLanguage}` },
+                                spiceLevel: { type: Type.STRING, enum: ["None", "Mild", "Medium", "Hot"], description: "None=Not Spicy, Mild=1 chili, Medium=2 chilies, Hot=3 chilies" },
+                                category: { type: Type.STRING, description: "Broad category like Soup, Main, Dessert" },
+                                boundingBox: { type: Type.ARRAY, items: { type: Type.NUMBER }, description: "Bounding box of the dish [ymin, xmin, ymax, xmax] in 0-1000 scale." }
+                            },
+                            required: ["name", "originalName", "englishName", "description", "tags", "allergens", "spiceLevel", "category", "boundingBox"]
+                        }
+                    }
+                },
+                required: ["isMenu", "dishes"]
             };
 
             // 4. Update Status
-            if (isMounted) setStatusText("Translating menu...");
+            if (isMounted) setStatusText("Reading menu & analyzing...");
 
             // 5. Call API
             const response = await ai.models.generateContent({
@@ -79,39 +91,53 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
                 contents: {
                     parts: [
                         { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-                        { text: `Analyze this image (food photo or menu). 
+                        { text: `Analyze this image. First, determine if it is a "Menu" (mostly text) or "Food" (photo of dishes).
                                  Identify all distinct dishes. 
                                  Translate details to ${targetLanguage}.
-                                 Provide 3 distinct flavor tags and up to 5 allergens per dish.
-                                 Estimate spice level accurately.
+                                 Return accurate bounding boxes (0-1000 scale) for where each dish is located in the image.
+                                 If it is a menu, identify the text location of the dish name.
                                  
-                                 IMPORTANT: Return PURE JSON.` }
+                                 IMPORTANT: Return PURE JSON adhering to the schema.` }
                     ]
                 },
                 config: {
                     responseMimeType: "application/json",
-                    responseSchema: dishSchema,
-                    systemInstruction: "You are an expert food critic. Be concise. Identify allergens carefully."
+                    responseSchema: responseSchema,
+                    systemInstruction: "You are an expert food critic."
                 }
             });
 
             clearInterval(progressInterval);
             if (isMounted) setProgress(100);
 
-            // 6. Parse Result with Robustness
-            let jsonText = response.text || "[]";
+            // 6. Parse Result
+            let jsonText = response.text || "{}";
             if (jsonText.startsWith('```')) {
                 jsonText = jsonText.replace(/^```json\s?/, '').replace(/^```\s?/, '').replace(/```$/, '');
             }
             
-            const dishes = JSON.parse(jsonText);
+            const parsedData = JSON.parse(jsonText);
+            const isMenu = parsedData.isMenu || false;
+            const dishesList = parsedData.dishes || [];
 
-            // Add IDs and image ref
-            const processedDishes: Dish[] = dishes.map((d: any, index: number) => ({
-                ...d,
-                id: Date.now().toString() + index,
-                image: uploadedImage 
-            }));
+            // Process dishes: Add ID and determine Image URL
+            const processedDishes: Dish[] = dishesList.map((d: any, index: number) => {
+                // If it's a menu, we use a generated image. If it's food, we use the upload.
+                // We keep uploadedImage as a reference for the 'Locate' feature in Results.
+                
+                // Construct a prompt-based image URL for menus
+                // Use English name for better results with the generator
+                const imageUrl = isMenu 
+                    ? `https://image.pollinations.ai/prompt/${encodeURIComponent(d.englishName || d.name)}%20delicious%20food%20professional%20photography%204k?nologo=true`
+                    : uploadedImage;
+
+                return {
+                    ...d,
+                    id: Date.now().toString() + index,
+                    image: imageUrl, 
+                    isMenu: isMenu
+                };
+            });
 
             // 7. Complete
             setTimeout(() => {
@@ -120,6 +146,7 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
 
         } catch (error) {
             console.error("AI Error:", error);
+            if (progressInterval) clearInterval(progressInterval);
             if (isMounted) {
                 setStatusText("Error scanning. Try again.");
                 setProgress(0);
@@ -130,7 +157,10 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
 
     analyzeImage();
 
-    return () => { isMounted = false; };
+    return () => { 
+        isMounted = false; 
+        if (progressInterval) clearInterval(progressInterval);
+    };
   }, [uploadedImage, targetLanguage, onComplete, onCancel]);
 
   return (
@@ -158,7 +188,7 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
             {statusText}
           </h2>
           <p className="text-[#181310]/60 dark:text-[#f8f6f5]/60 text-base font-normal leading-normal max-w-[280px]">
-             Identifying flavors and allergens in {targetLanguage}.
+             Reading menu and analyzing flavors in {targetLanguage}.
           </p>
         </div>
 

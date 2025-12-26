@@ -13,6 +13,8 @@ export interface Dish {
   allergens: string[]; // List of allergens (e.g. "Peanuts", "Shellfish")
   spiceLevel: 'None' | 'Mild' | 'Medium' | 'Hot';
   category: string;
+  boundingBox?: number[]; // [ymin, xmin, ymax, xmax] 0-1000 scale
+  isMenu?: boolean; // New flag to indicate if this came from a menu scan
 }
 
 export interface SavedItem extends Dish {

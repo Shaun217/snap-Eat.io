@@ -50,10 +50,10 @@ export const Home: React.FC<HomeProps> = ({
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 w-full">
         <div className="text-center mb-8 animate-fade-in-up">
           <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white mb-3 tracking-tight leading-tight">
-            Scan a Menu
+            Scan Dish or Menu
           </h2>
           <p className="text-lg text-gray-500 dark:text-gray-400 font-medium max-w-[280px] mx-auto leading-relaxed">
-            Don't guess what you eat.<br />Let AI explain the menu.
+            Instantly translate menus or identify food from photos.
           </p>
         </div>
 
@@ -106,7 +106,7 @@ export const Home: React.FC<HomeProps> = ({
             Tap to start
           </span>
           <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">
-            Supports Photos & PDF Uploads
+            AI-Powered Food Analysis
           </p>
         </div>
       </main>
