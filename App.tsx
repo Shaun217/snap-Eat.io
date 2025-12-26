@@ -6,12 +6,13 @@ import { Results } from './components/Results';
 import { History } from './components/History';
 import { Profile } from './components/Profile';
 import { BottomNav } from './components/BottomNav';
-import { Screen, Language, Dish, SavedItem } from './types';
+import { Screen, Language, Dish, SavedItem, ScanType } from './types';
 import { MOCK_SAVED } from './constants';
 
 const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [scanType, setScanType] = useState<ScanType>('dish');
   
   // State for Features
   const [defaultLanguage, setDefaultLanguage] = useState<Language>('English');
@@ -31,9 +32,10 @@ const App: React.FC = () => {
     setTargetLanguage(lang);
   };
 
-  const handleImageSelect = (file: File) => {
+  const handleImageSelect = (file: File, type: ScanType) => {
     const imageUrl = URL.createObjectURL(file);
     setUploadedImage(imageUrl);
+    setScanType(type);
     setCurrentScreen('scanning');
   };
 
@@ -81,6 +83,7 @@ const App: React.FC = () => {
         return (
           <Scanning 
             uploadedImage={uploadedImage} 
+            scanType={scanType}
             targetLanguage={targetLanguage}
             onCancel={handleScanCancel} 
             onComplete={handleScanComplete} 

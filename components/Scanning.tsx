@@ -1,18 +1,22 @@
 
 import React, { useEffect, useState } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
-import { Dish, Language } from '../types';
+import { Dish, Language, ScanType } from '../types';
 
 interface ScanningProps {
   uploadedImage: string | null;
   targetLanguage: Language;
+  scanType: ScanType;
   onCancel: () => void;
   onComplete: (results: Dish[]) => void;
 }
 
-export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguage, onCancel, onComplete }) => {
+export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguage, scanType, onCancel, onComplete }) => {
   const [progress, setProgress] = useState(0);
-  const [statusText, setStatusText] = useState("Identifying dish...");
+  // Initialize status text based on scan type
+  const [statusText, setStatusText] = useState(
+    scanType === 'menu' ? "Scanning Menu..." : "Analyzing Dish..."
+  );
 
   // Helper to convert blob URL to Base64
   const urlToBase64 = async (url: string): Promise<string> => {
@@ -82,8 +86,14 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
                 required: ["isMenu", "dishes"]
             };
 
-            // 4. Update Status
-            if (isMounted) setStatusText("Reading menu & analyzing...");
+            // 4. Update Status based on Type
+            if (isMounted) {
+                setStatusText(
+                    scanType === 'menu' 
+                        ? "Extracting menu items..." 
+                        : "Identifying ingredients..."
+                );
+            }
 
             // 5. Call API
             const response = await ai.models.generateContent({
@@ -91,7 +101,8 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
                 contents: {
                     parts: [
                         { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-                        { text: `Analyze this image. First, determine if it is a "Menu" (mostly text) or "Food" (photo of dishes).
+                        { text: `Analyze this image. The user indicated this is a "${scanType}".
+                                 First, confirm if it is a "Menu" (mostly text) or "Food" (photo of dishes).
                                  Identify all distinct dishes. 
                                  Translate details to ${targetLanguage}.
                                  Return accurate bounding boxes (0-1000 scale) for where each dish is located in the image.
@@ -117,6 +128,7 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
             }
             
             const parsedData = JSON.parse(jsonText);
+            // Default to detection, but fallback to scanType hint if close
             const isMenu = parsedData.isMenu || false;
             const dishesList = parsedData.dishes || [];
 
@@ -126,9 +138,11 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
                 // We keep uploadedImage as a reference for the 'Locate' feature in Results.
                 
                 // Construct a prompt-based image URL for menus
-                // Use English name for better results with the generator
+                // Use English name for better results with the generator.
+                // Request medium quality (smaller size, simpler prompt) to speed up loading.
+                const prompt = `${d.englishName || d.name} ${d.category || 'dish'} simple realistic food photo`;
                 const imageUrl = isMenu 
-                    ? `https://image.pollinations.ai/prompt/${encodeURIComponent(d.englishName || d.name)}%20delicious%20food%20professional%20photography%204k?nologo=true`
+                    ? `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=400&height=400&nologo=true&seed=${index}`
                     : uploadedImage;
 
                 return {
@@ -161,7 +175,7 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
         isMounted = false; 
         if (progressInterval) clearInterval(progressInterval);
     };
-  }, [uploadedImage, targetLanguage, onComplete, onCancel]);
+  }, [uploadedImage, targetLanguage, scanType, onComplete, onCancel]);
 
   return (
     <div className="relative flex h-full w-full flex-col justify-between overflow-hidden bg-background-light dark:bg-background-dark">
@@ -184,11 +198,14 @@ export const Scanning: React.FC<ScanningProps> = ({ uploadedImage, targetLanguag
 
         {/* Text */}
         <div className="flex flex-col items-center gap-3 text-center mb-10">
-          <h2 className="text-[#181310] dark:text-white tracking-tight text-[28px] font-bold leading-tight px-4">
+          <h2 className="text-[#181310] dark:text-white tracking-tight text-[28px] font-bold leading-tight px-4 animate-[pulse_2s_infinite]">
             {statusText}
           </h2>
           <p className="text-[#181310]/60 dark:text-[#f8f6f5]/60 text-base font-normal leading-normal max-w-[280px]">
-             Reading menu and analyzing flavors in {targetLanguage}.
+             {scanType === 'menu' 
+                ? `Reading menu text and translating to ${targetLanguage}.`
+                : `Identifying flavors and allergens in ${targetLanguage}.`
+             }
           </p>
         </div>
 
