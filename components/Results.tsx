@@ -21,9 +21,6 @@ export const Results: React.FC<ResultsProps> = ({ uploadedImage, results, savedI
   // State for Detail Modal Toggle (Only relevant for Menu Mode)
   const [modalViewMode, setModalViewMode] = useState<'food' | 'scan'>('food');
 
-  // If we are in single item mode, we effectively "select" the first item, but we render it inline instead of a modal
-  // Actually, simpler: simpler to just render the specific layout.
-  
   // --- Helpers ---
 
   const renderSpiceLevel = (level: string) => {
@@ -63,7 +60,6 @@ export const Results: React.FC<ResultsProps> = ({ uploadedImage, results, savedI
       if (dish.isMenu) return { objectFit: 'cover' };
 
       // For Dish Scan: Image is the full Uploaded Image. We need to focus on the bbox.
-      // object-position: x% y%
       if (dish.boundingBox) {
           const [ymin, xmin, ymax, xmax] = dish.boundingBox;
           const cx = (xmin + xmax) / 2 / 10;
@@ -75,6 +71,21 @@ export const Results: React.FC<ResultsProps> = ({ uploadedImage, results, savedI
           };
       }
       return { objectFit: 'cover' };
+  };
+
+  // Helper for Smart Zoom on Menu
+  const getSmartZoomStyle = (dish: Dish): React.CSSProperties => {
+      if (!dish.boundingBox) return {};
+      
+      const [ymin, xmin, ymax, xmax] = dish.boundingBox;
+      // Calculate center percentage (0-100%)
+      const cx = (xmin + xmax) / 2 / 10;
+      const cy = (ymin + ymax) / 2 / 10;
+      
+      return {
+          transformOrigin: `${cx}% ${cy}%`,
+          transform: 'scale(2.0)', // 2x Zoom to read text clearly
+      };
   };
 
   // --- Sub-Components ---
@@ -94,7 +105,7 @@ export const Results: React.FC<ResultsProps> = ({ uploadedImage, results, savedI
                         // Dish -> 'scan' (Uploaded Image) because that IS the food image for Dish mode.
                         setModalViewMode(dish.isMenu ? 'food' : 'scan'); 
                     }}
-                    className="flex items-center gap-3 p-3 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 active:scale-[0.98] transition-transform cursor-pointer"
+                    className="flex items-center gap-3 p-3 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 active:scale-[0.98] transition-transform cursor-pointer group"
                 >
                     {/* Thumbnail */}
                     <div className="size-20 shrink-0 rounded-lg bg-gray-100 overflow-hidden relative border border-gray-100 dark:border-white/5">
@@ -114,7 +125,7 @@ export const Results: React.FC<ResultsProps> = ({ uploadedImage, results, savedI
 
                     {/* Text Info */}
                     <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
-                        <h3 className="text-base font-bold text-gray-900 dark:text-white truncate leading-tight">
+                        <h3 className="text-base font-bold text-gray-900 dark:text-white truncate leading-tight group-hover:text-primary transition-colors">
                             {dish.name}
                         </h3>
                         <p className="text-sm font-medium text-primary truncate">
@@ -144,26 +155,11 @@ export const Results: React.FC<ResultsProps> = ({ uploadedImage, results, savedI
     </div>
   );
 
-  // 2. Single Item Layout (Big Card) - Used when only 1 result found
+  // 2. Single Item Layout (Big Card)
   const SingleItemLayout = () => {
     const dish = results[0];
     const isSaved = savedIds.includes(dish.id);
     const bbox = dish.boundingBox;
-    
-    // For single item Dish scan: show uploaded image with spotlight.
-    // For single item Menu scan: show Bing image by default, maybe toggle?
-    // Let's keep it simple: Single item view acts like the Modal content but inline.
-    
-    // Actually, to respect the "Spotlight" request for Dish mode, we should show the uploaded image with the bbox.
-    // The previous implementation of DishLayout was good for this.
-    
-    // If Menu Scan (Single Item): We likely still want the "Food" vs "Menu" toggle.
-    // So reusing the Modal logic might be best, or just rendering the card.
-    
-    // Let's stick to the previous 'DishLayout' style for single item but enhanced.
-    // If it's a menu scan, use the Bing Image as primary.
-    // If it's a dish scan, use Uploaded Image as primary.
-    
     const displayImage = (dish.isMenu) ? dish.image : (uploadedImage || dish.image);
     
     return (
@@ -175,8 +171,7 @@ export const Results: React.FC<ResultsProps> = ({ uploadedImage, results, savedI
                     className="w-full h-auto object-contain max-h-[500px] block mx-auto"
                 />
                 
-                {/* Spotlight (Only for Dish Scan in Single View, or if we implemented toggle for single view) */}
-                {/* For simplicity in Single View, we show Spotlight if it's Dish Scan */}
+                {/* Spotlight for single Dish Scan */}
                 {!dish.isMenu && bbox && (
                      <div 
                         className="absolute z-10 pointer-events-none shadow-[0_0_0_9999px_rgba(255,255,255,0.55)] dark:shadow-[0_0_0_9999px_rgba(0,0,0,0.55)]"
@@ -311,14 +306,12 @@ export const Results: React.FC<ResultsProps> = ({ uploadedImage, results, savedI
               
               <div className="relative w-full max-w-md bg-white dark:bg-[#1a1a1a] rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl pointer-events-auto animate-[slideUp_0.3s_ease-out] sm:animate-[scaleIn_0.2s_ease-out] max-h-[90vh] flex flex-col">
                   
-                    {/* Header Controls */}
-                    <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start z-30 pointer-events-none">
+                    {/* Header Controls - Enhanced Visibility */}
+                    <div className="absolute top-0 left-0 right-0 p-4 pt-5 flex justify-between items-start z-50 pointer-events-none bg-gradient-to-b from-black/60 to-transparent">
                          <div className="pointer-events-auto">
-                            {/* Toggle Switch - Only show if it's a Menu Scan. 
-                                For Dish Scan, there's only one relevant image (the scan), so no toggle needed. 
-                            */}
+                            {/* Toggle Switch */}
                             {selectedItem.isMenu && (
-                                <div className="flex bg-black/40 backdrop-blur-md rounded-full p-1 border border-white/10">
+                                <div className="flex bg-black/40 backdrop-blur-md rounded-full p-1 border border-white/10 shadow-lg">
                                     <button 
                                         onClick={() => setModalViewMode('food')}
                                         className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${modalViewMode === 'food' ? 'bg-white text-black shadow-md' : 'text-white hover:bg-white/10'}`}
@@ -339,14 +332,14 @@ export const Results: React.FC<ResultsProps> = ({ uploadedImage, results, savedI
 
                         <button 
                             onClick={() => setSelectedItem(null)}
-                            className="pointer-events-auto size-8 flex items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md hover:bg-black/60"
+                            className="pointer-events-auto size-9 flex items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md hover:bg-black/60 border border-white/10 shadow-lg active:scale-90 transition-all"
                         >
-                            <span className="material-symbols-outlined text-[20px]">close</span>
+                            <span className="material-symbols-outlined text-[22px]">close</span>
                         </button>
                     </div>
 
                     {/* Image Area */}
-                    <div className="relative w-full h-72 bg-gray-900 shrink-0">
+                    <div className="relative w-full h-72 bg-gray-900 shrink-0 overflow-hidden">
                         {modalViewMode === 'food' ? (
                             <img 
                                 src={selectedItem.image} 
@@ -354,13 +347,17 @@ export const Results: React.FC<ResultsProps> = ({ uploadedImage, results, savedI
                                 className="w-full h-full object-cover animate-[fadeIn_0.3s_ease-in]"
                             />
                         ) : (
-                            <div className="relative w-full h-full overflow-hidden animate-[fadeIn_0.3s_ease-in]">
+                            // Scan/Menu Mode with Smart Zoom
+                            <div 
+                                className="relative w-full h-full transition-transform duration-500 ease-out"
+                                style={getSmartZoomStyle(selectedItem)}
+                            >
                                 <img 
                                     src={uploadedImage || ''} 
                                     alt="Scan Context"
                                     className="w-full h-full object-contain bg-black/50"
                                 />
-                                {/* Spotlight Bounding Box - Works for both Menu and Dish modes in 'scan' view */}
+                                {/* Spotlight Bounding Box */}
                                 {selectedItem.boundingBox && (
                                     <div 
                                         className="absolute z-10 pointer-events-none shadow-[0_0_0_9999px_rgba(0,0,0,0.7)]"
@@ -371,76 +368,80 @@ export const Results: React.FC<ResultsProps> = ({ uploadedImage, results, savedI
                                             width: `${(selectedItem.boundingBox[3] - selectedItem.boundingBox[1]) / 10}%`,
                                         }}
                                     >
+                                        {/* Box Border */}
                                         <div className="w-full h-full border-2 border-primary shadow-[0_0_15px_rgba(230,80,0,0.5)] animate-pulse"></div>
                                     </div>
                                 )}
                             </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none"></div>
+                        {/* Gradient Overlay for Text Readability at Bottom of Image */}
+                        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none"></div>
                     </div>
 
                     {/* Content Scrollable */}
-                    <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-[#1a1a1a]">
-                        <div className="flex justify-between items-start mb-4">
-                            <div>
-                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">
-                                    {selectedItem.name}
-                                </h2>
-                                <p className="text-lg text-primary font-medium italic mt-1">
-                                    {selectedItem.originalName}
+                    <div className="flex-1 overflow-y-auto bg-white dark:bg-[#1a1a1a]">
+                        <div className="p-6">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">
+                                        {selectedItem.name}
+                                    </h2>
+                                    <p className="text-lg text-primary font-medium italic mt-1">
+                                        {selectedItem.originalName}
+                                    </p>
+                                </div>
+                                <button 
+                                    onClick={() => onSave(selectedItem.id)}
+                                    className={`shrink-0 size-10 flex items-center justify-center rounded-full border border-gray-100 dark:border-gray-700 ${savedIds.includes(selectedItem.id) ? 'bg-primary text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                                >
+                                    <span className={`material-symbols-outlined ${savedIds.includes(selectedItem.id) ? 'material-symbols-filled' : ''}`}>favorite</span>
+                                </button>
+                            </div>
+
+                            {/* Badges */}
+                            <div className="flex flex-wrap gap-2 mb-6">
+                                {selectedItem.category && (
+                                    <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-xs font-bold text-gray-600 dark:text-gray-300">
+                                        {selectedItem.category}
+                                    </span>
+                                )}
+                                {selectedItem.spiceLevel && selectedItem.spiceLevel !== 'None' && (
+                                    <span className="px-3 py-1 rounded-full bg-orange-50 dark:bg-orange-900/20 text-xs font-bold text-orange-700 dark:text-orange-300 flex items-center gap-1">
+                                        <span>🌶️</span> {selectedItem.spiceLevel}
+                                    </span>
+                                )}
+                                {selectedItem.tags.map(tag => (
+                                    <span key={tag} className="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-xs font-bold text-blue-700 dark:text-blue-300">
+                                        {tag}
+                                    </span>
+                                ))}
+                            </div>
+
+                            {/* Description */}
+                            <div className="prose dark:prose-invert">
+                                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Description</h4>
+                                <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
+                                    {selectedItem.description}
                                 </p>
                             </div>
-                            <button 
-                                onClick={() => onSave(selectedItem.id)}
-                                className={`shrink-0 size-10 flex items-center justify-center rounded-full border border-gray-100 dark:border-gray-700 ${savedIds.includes(selectedItem.id) ? 'bg-primary text-white' : 'text-gray-400'}`}
-                            >
-                                <span className={`material-symbols-outlined ${savedIds.includes(selectedItem.id) ? 'material-symbols-filled' : ''}`}>favorite</span>
-                            </button>
-                        </div>
 
-                        {/* Badges */}
-                        <div className="flex flex-wrap gap-2 mb-6">
-                            {selectedItem.category && (
-                                <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-xs font-bold text-gray-600 dark:text-gray-300">
-                                    {selectedItem.category}
-                                </span>
-                            )}
-                            {selectedItem.spiceLevel && selectedItem.spiceLevel !== 'None' && (
-                                <span className="px-3 py-1 rounded-full bg-orange-50 dark:bg-orange-900/20 text-xs font-bold text-orange-700 dark:text-orange-300 flex items-center gap-1">
-                                    <span>🌶️</span> {selectedItem.spiceLevel}
-                                </span>
-                            )}
-                            {selectedItem.tags.map(tag => (
-                                <span key={tag} className="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-xs font-bold text-blue-700 dark:text-blue-300">
-                                    {tag}
-                                </span>
-                            ))}
-                        </div>
-
-                        {/* Description */}
-                        <div className="prose dark:prose-invert">
-                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Description</h4>
-                            <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
-                                {selectedItem.description}
-                            </p>
-                        </div>
-
-                        {/* Allergens Warning */}
-                        {selectedItem.allergens && selectedItem.allergens.length > 0 && (
-                             <div className="mt-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
-                                <div className="flex items-center gap-2 mb-2 text-red-700 dark:text-red-400">
-                                    <span className="material-symbols-outlined text-[18px]">warning</span>
-                                    <h4 className="text-xs font-bold uppercase tracking-wider">Contains Allergens</h4>
+                            {/* Allergens Warning */}
+                            {selectedItem.allergens && selectedItem.allergens.length > 0 && (
+                                <div className="mt-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
+                                    <div className="flex items-center gap-2 mb-2 text-red-700 dark:text-red-400">
+                                        <span className="material-symbols-outlined text-[18px]">warning</span>
+                                        <h4 className="text-xs font-bold uppercase tracking-wider">Contains Allergens</h4>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {selectedItem.allergens.map(a => (
+                                            <span key={a} className="text-xs font-bold text-red-600 dark:text-red-300 bg-white dark:bg-red-900/20 px-2 py-1 rounded-md shadow-sm">
+                                                {a}
+                                            </span>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {selectedItem.allergens.map(a => (
-                                        <span key={a} className="text-xs font-bold text-red-600 dark:text-red-300 bg-white dark:bg-red-900/20 px-2 py-1 rounded-md shadow-sm">
-                                            {a}
-                                        </span>
-                                    ))}
-                                </div>
-                             </div>
-                        )}
+                            )}
+                        </div>
                     </div>
               </div>
           </div>
