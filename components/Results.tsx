@@ -114,10 +114,10 @@ export const Results: React.FC<ResultsProps> = ({ uploadedImage, results, savedI
                     loading="lazy"
                 />
                 
-                {/* Bounding Box Overlay */}
+                {/* Bounding Box Overlay with Spotlight Effect */}
                 {showBBox && bbox && bbox.length === 4 && (
                     <div 
-                        className="absolute z-10 pointer-events-none"
+                        className="absolute z-10 pointer-events-none shadow-[0_0_0_9999px_rgba(255,255,255,0.55)] dark:shadow-[0_0_0_9999px_rgba(0,0,0,0.55)]"
                         style={{
                             top: `${bbox[0] / 10}%`,
                             left: `${bbox[1] / 10}%`,
