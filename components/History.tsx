@@ -39,37 +39,35 @@ export const History: React.FC<HistoryProps> = ({ historyItems, savedItems, acti
         <div className="relative flex h-full w-full flex-col bg-background-light dark:bg-background-dark overflow-hidden">
             {/* Decorative background */}
             <div className="absolute inset-0 opacity-5 pointer-events-none z-0" style={{ backgroundImage: 'radial-gradient(#e65000 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
-            
+
             <header className="relative z-10 flex flex-col w-full bg-white/80 dark:bg-surface-dark/90 backdrop-blur-md shadow-sm">
                 <div className="flex items-center justify-between px-6 py-4">
                     <h1 className="text-xl font-bold text-gray-900 dark:text-white">Activity</h1>
                     <div className="flex items-center justify-center size-8 rounded-full bg-gray-100 dark:bg-gray-800">
-                         <span className="material-symbols-outlined text-gray-500 text-sm">history</span>
+                        <span className="material-symbols-outlined text-gray-500 text-sm">history</span>
                     </div>
                 </div>
 
                 {/* Tabs */}
                 <div className="flex px-6 pb-0 gap-8 border-b border-gray-100 dark:border-gray-800">
-                    <button 
+                    <button
                         onClick={() => onTabChange('scans')}
-                        className={`pb-3 text-sm font-bold transition-all relative ${
-                            activeTab === 'scans' 
-                            ? 'text-primary' 
-                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                        }`}
+                        className={`pb-3 text-sm font-bold transition-all relative ${activeTab === 'scans'
+                                ? 'text-primary'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                            }`}
                     >
                         History Scan
                         {activeTab === 'scans' && (
                             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full"></div>
                         )}
                     </button>
-                    <button 
+                    <button
                         onClick={() => onTabChange('saved')}
-                        className={`pb-3 text-sm font-bold transition-all relative ${
-                            activeTab === 'saved' 
-                            ? 'text-primary' 
-                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                        }`}
+                        className={`pb-3 text-sm font-bold transition-all relative ${activeTab === 'saved'
+                                ? 'text-primary'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                            }`}
                     >
                         Saved
                         {activeTab === 'saved' && (
@@ -93,18 +91,18 @@ export const History: React.FC<HistoryProps> = ({ historyItems, savedItems, acti
 
                 <div className="flex flex-col gap-3">
                     {displayItems.map((item) => {
-                         // Check if item is saved to show correct heart status
+                        // Check if item is saved to show correct heart status
                         const isSaved = savedItems.some(s => s.id === item.id);
-                        
+
                         return (
-                            <article 
-                                key={item.id} 
+                            <article
+                                key={item.id}
                                 onClick={() => setExpandedDish(item)}
                                 className="flex gap-4 p-3 bg-white dark:bg-surface-dark rounded-xl shadow-sm border border-gray-100 dark:border-gray-800/60 relative overflow-hidden group cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
                             >
                                 {/* Image Thumb */}
                                 <div className="w-20 h-20 rounded-lg bg-gray-200 shrink-0 overflow-hidden relative">
-                                    <div 
+                                    <div
                                         className="absolute inset-0 bg-cover bg-center"
                                         style={{ backgroundImage: `url('${item.image || 'https://via.placeholder.com/150'}')` }}
                                     ></div>
@@ -114,7 +112,7 @@ export const History: React.FC<HistoryProps> = ({ historyItems, savedItems, acti
                                     <div>
                                         <div className="flex justify-between items-start">
                                             <h3 className="text-base font-bold text-gray-900 dark:text-white leading-tight line-clamp-1">{item.name}</h3>
-                                            <button 
+                                            <button
                                                 onClick={(e) => { e.stopPropagation(); onToggleSave(item.id); }}
                                                 className={`flex items-center justify-center p-1 -mt-1 -mr-1 transition-colors ${isSaved ? 'text-primary' : 'text-gray-300 hover:text-gray-500'}`}
                                             >
@@ -123,13 +121,13 @@ export const History: React.FC<HistoryProps> = ({ historyItems, savedItems, acti
                                         </div>
                                         <p className="text-xs font-medium text-primary line-clamp-1">{item.originalName}</p>
                                     </div>
-                                    
+
                                     <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mt-1">
                                         {item.description}
                                     </p>
 
                                     <div className="flex items-center gap-2 mt-2">
-                                         {item.spiceLevel && item.spiceLevel !== 'None' && (
+                                        {item.spiceLevel && item.spiceLevel !== 'None' && (
                                             <span className="text-[10px] font-bold text-orange-600 bg-orange-50 dark:bg-orange-900/20 px-1.5 py-0.5 rounded flex items-center gap-0.5">
                                                 <span>🌶️</span> {item.spiceLevel}
                                             </span>
@@ -149,16 +147,16 @@ export const History: React.FC<HistoryProps> = ({ historyItems, savedItems, acti
 
             {/* Expanded Dish Modal */}
             {expandedDish && (
-                <div 
-                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" 
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-[fadeIn_0.2s_ease-out]"
                     onClick={() => setExpandedDish(null)}
                 >
-                    <div 
-                        className="relative w-full max-w-[340px] bg-white dark:bg-[#1a1a1a] rounded-2xl overflow-hidden shadow-2xl animate-[scaleIn_0.2s_ease-out]" 
+                    <div
+                        className="relative w-full max-w-[340px] bg-white dark:bg-[#1a1a1a] rounded-2xl overflow-hidden shadow-2xl animate-[scaleIn_0.2s_ease-out]"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Close Button */}
-                        <button 
+                        <button
                             onClick={() => setExpandedDish(null)}
                             className="absolute top-3 right-3 z-20 flex items-center justify-center size-8 rounded-full bg-black/20 backdrop-blur-md text-white hover:bg-black/40 transition-colors"
                         >
