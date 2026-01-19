@@ -150,7 +150,7 @@ export const History: React.FC<HistoryProps> = ({ historyItems, savedItems, acti
             {/* Expanded Dish Modal */}
             {expandedDish && (
                 <div 
-                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" 
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" 
                     onClick={() => setExpandedDish(null)}
                 >
                     <div 
