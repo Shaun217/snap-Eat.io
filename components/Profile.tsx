@@ -165,10 +165,21 @@ export const Profile: React.FC<ProfileProps> = ({
         try {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: `Translate the following dietary restriction note into ${defaultLanguage} for a chef to read. Keep it clear, polite and concise. Return ONLY the translated text.\n\nText: "${dietaryNotes}"`,
+                model: 'gemini-2.0-flash-exp',
+                contents: {
+                    parts: [
+                        { text: `Translate the following dietary restriction note into ${defaultLanguage} for a chef to read. Keep it clear, polite and concise. Return ONLY the translated text.\n\nText: "${dietaryNotes}"` }
+                    ]
+                }
             });
-            setTranslatedNotes(response.text?.trim() || dietaryNotes);
+
+            // Handle response
+            if (response.text) {
+                setTranslatedNotes(response.text.trim());
+            } else {
+                console.warn("Translation returned empty text", response);
+                setTranslatedNotes(dietaryNotes);
+            }
         } catch (error) {
             console.error("Translation failed", error);
             setTranslatedNotes(dietaryNotes); // Fallback to original
