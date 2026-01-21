@@ -28,7 +28,7 @@ export const Profile: React.FC<ProfileProps> = ({
     onUpdateProfile
 }) => {
     const [avatar, setAvatar] = useState("https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=200");
-    const [location, setLocation] = useState("Locating...");
+
     const [isEditingName, setIsEditingName] = useState(false);
     const [userName, setUserName] = useState("Guest User");
     const nameInputRef = useRef<HTMLInputElement>(null);
@@ -59,28 +59,7 @@ export const Profile: React.FC<ProfileProps> = ({
         }
     }, [userProfile]);
 
-    useEffect(() => {
-        // Fetch location based on IP
-        fetch('https://ipapi.co/json/')
-            .then(res => res.json())
-            .then(data => {
-                if (data.city && data.country_name) {
-                    let country = data.country_name;
-                    // Special handling for HK, Macau, Taiwan to show as China
-                    const specialRegions = ['Hong Kong', 'Taiwan', 'Macau'];
-                    const specialCodes = ['HK', 'TW', 'MO'];
 
-                    if (specialRegions.includes(country) || specialCodes.includes(data.country_code)) {
-                        country = 'China';
-                    }
-
-                    setLocation(`${data.city}, ${country}`);
-                } else {
-                    setLocation("Unknown Location");
-                }
-            })
-            .catch(() => setLocation("Earth, Milky Way"));
-    }, []);
 
     useEffect(() => {
         if (isEditingName && nameInputRef.current) {
@@ -251,10 +230,7 @@ export const Profile: React.FC<ProfileProps> = ({
                         )}
                     </div>
 
-                    <div className="flex items-center gap-1 mt-1">
-                        <span className="material-symbols-outlined text-gray-400 text-[16px]">location_on</span>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{location}</p>
-                    </div>
+
 
                     {/* Stats */}
                     <div className="flex items-center gap-4 mt-6 w-full max-w-[280px] bg-white dark:bg-surface-dark p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
