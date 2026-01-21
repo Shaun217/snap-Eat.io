@@ -162,20 +162,17 @@ export const Profile: React.FC<ProfileProps> = ({
 
         // Translate notes
         setIsTranslating(true);
-        console.log("Starting translation...", { dietaryNotes, hasKey: !!process.env.API_KEY });
 
         try {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const response = await ai.models.generateContent({
-                model: 'gemini-1.5-flash',
+                model: 'gemini-3-flash-preview',
                 contents: {
                     parts: [
                         { text: `Translate the following dietary restriction note into ${defaultLanguage} for a chef to read. Keep it clear, polite and concise. Return ONLY the translated text.\n\nText: "${dietaryNotes}"` }
                     ]
                 }
             });
-
-            console.log("Translation response:", response);
 
             // Handle response
             if (response.text) {
@@ -185,7 +182,7 @@ export const Profile: React.FC<ProfileProps> = ({
                 setTranslatedNotes(dietaryNotes);
             }
         } catch (error) {
-            console.error("Translation failed COMPLETELY:", error);
+            console.error("Translation failed", error);
             setTranslatedNotes(dietaryNotes); // Fallback to original
         } finally {
             setIsTranslating(false);
